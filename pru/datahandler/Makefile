@@ -24,8 +24,8 @@ CFLAGS=-v3 -O2 --printf_support=minimal --display_error_number --endian=little -
 
 LFLAGS=--reread_libs --warn_sections --stack_size=$(STACK_SIZE) --heap_size=$(HEAP_SIZE) -m $(GEN_DIR)/$(TARGET).map
 
-PRUN=0
-TARGET=Receiver
+PRUN=1
+TARGET=dataHandler
 
 # Lookup PRU by address
 ifeq ($(PRUN),0)
@@ -43,12 +43,12 @@ stop:
 	@echo "-    Stopping PRU $(PRUN)"
 	@echo stop | sudo tee $(PRU_DIR)/state || echo Cannot stop $(PRUN)
 
-status:
-	@cat $(PRU_DIR)/state
-
 start:
 	@echo "-    Starting PRU $(PRUN)"
 	@echo start | sudo tee $(PRU_DIR)/state
+
+status:
+	@cat $(PRU_DIR)/state
 
 install: $(GEN_DIR)/$(TARGET).out
 	@echo '-	copying firmware file $(GEN_DIR)/$(TARGET).out to /lib/firmware/am335x-pru$(PRUN)-fw'

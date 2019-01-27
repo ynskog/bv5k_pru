@@ -30,7 +30,6 @@ volatile register uint16_t __R31;
 
 
 /* SW1 offset */
-/*TODO: Define GPI offset for SW1 */
 
 /* INTC configuration
  * We are going to map User event 16 to Host 1
@@ -62,40 +61,41 @@ void configIntc(void)
 
 #define read_single_cycle(nbit)    \
         RX_DATA_BUF[nbit] = __R31; \
-        __R30 = 0x0004;            \
+        __R30 |= 0x0004;           \
         __delay_cycles(1);	   \
-        __R30 = 0x0000;            \
+        __R30 &= 0xfffb;           \
         __delay_cycles(1);
 
 
 // Write 0xF8 to slave to initialize block transfer
 inline void initBlockTransfer()
 {
-    __R30 = 0x0040;  __delay_cycles(BIT_DELAY);
+    __R30 |= 0x0040;  __delay_cycles(BIT_DELAY);
 
-    __R30 = 0x00044; __delay_cycles(BIT_DELAY);
-    __R30 = 0x0040;  __delay_cycles(BIT_DELAY);
+    __R30 |= 0x0044; __delay_cycles(BIT_DELAY);
+    __R30 &= 0xfffb;  __delay_cycles(BIT_DELAY);
 
-    __R30 = 0x00044; __delay_cycles(BIT_DELAY);
-    __R30 = 0x0040;  __delay_cycles(BIT_DELAY);
+    __R30 |= 0x0044; __delay_cycles(BIT_DELAY);
+    __R30 &= 0xfffb;  __delay_cycles(BIT_DELAY);
 
-    __R30 = 0x00044; __delay_cycles(BIT_DELAY);
-    __R30 = 0x0040;  __delay_cycles(BIT_DELAY);
+    __R30 |= 0x0044; __delay_cycles(BIT_DELAY);
+    __R30 &= 0xfffb;  __delay_cycles(BIT_DELAY);
 
-    __R30 = 0x00044; __delay_cycles(BIT_DELAY);
-    __R30 = 0x0040;  __delay_cycles(BIT_DELAY);
+    __R30 |= 0x0044; __delay_cycles(BIT_DELAY);
+    __R30 &= 0xfffb;  __delay_cycles(BIT_DELAY);
 
-    __R30 = 0x00044; __delay_cycles(BIT_DELAY);
-    __R30 = 0x0000;  __delay_cycles(BIT_DELAY);
+    __R30 |= 0x0044; __delay_cycles(BIT_DELAY);
+    __R30 &= 0xffbb;  __delay_cycles(BIT_DELAY);
 
-    __R30 = 0x0004;  __delay_cycles(BIT_DELAY);
-    __R30 = 0x0000;  __delay_cycles(BIT_DELAY);
+    __R30 |= 0x0004; __delay_cycles(BIT_DELAY);
+    __R30 &= 0xfffb;  __delay_cycles(BIT_DELAY);
 
-    __R30 = 0x0004;  __delay_cycles(BIT_DELAY);
-    __R30 = 0x0000;  __delay_cycles(BIT_DELAY);
+    __R30 |= 0x0004; __delay_cycles(BIT_DELAY);
+    __R30 &= 0xfffb;  __delay_cycles(BIT_DELAY);
 
-    __R30 = 0x0004;  __delay_cycles(BIT_DELAY);
-    __R30 = 0x0000;  __delay_cycles(BIT_DELAY);
+    __R30 |= 0x0004; __delay_cycles(BIT_DELAY);
+    __R30 &= 0xfffb;  __delay_cycles(BIT_DELAY);
+
 }
 
 // Read a single byte into rxbuf
@@ -130,11 +130,14 @@ void main(){
       while( (__R31 & 0x20)==0 ); // Wait for data ready
 
         initBlockTransfer();
-
-        for(iter=0;iter<BLOCKSIZE;iter++)
+	__delay_cycles(10);
+	
+        for(iter=0;iter<BLOCKSIZE;iter++) { 
             rxByte();
+	    __delay_cycles(5);
+	}
 
-        PRU0_PRU1_TRIGGER; // trigger PRU1 interrupt
+        PRU0_PRU1_TRIGGER; // Trigger PRU1 interrupt
         //__delay_cycles(100000000);
     }
 
