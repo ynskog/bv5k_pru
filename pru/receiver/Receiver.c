@@ -3,9 +3,8 @@
 #include "pru_intc.h"
 #include "resource_table.h"
 
-
-far uint32_t RX_DATA_BUF[8]; // faster to write full 32 bit words
 #pragma DATA_SECTION(RX_DATA_BUF, ".RX_DATA_BUF")
+far uint32_t RX_DATA_BUF;
 
 volatile register uint16_t __R30;
 volatile register uint16_t __R31;
@@ -20,14 +19,11 @@ volatile register uint16_t __R31;
 #define PRU0_PRU1_EVT       (16)
 #define PRU0_PRU1_TRIGGER   (__R31 = (PRU0_PRU1_EVT - 16) | (1 << 5))
 
-
 /* ===================================
  * APPLICATION SPECIFIC PARAMTERS
  * =================================== */
-#define BLOCKSIZE 8192
-
+#define BLOCKSIZE 8192/4 // block size in 32 bit words
 #define BIT_DELAY 2
-
 
 /* SW1 offset */
 
@@ -58,14 +54,6 @@ void configIntc(void)
     // Globally enable host interrupts
     CT_INTC.GER = 1;
 }
-
-#define read_single_cycle(nbit)    \
-        RX_DATA_BUF[nbit] = __R31; \
-        __R30 |= 0x0004;           \
-        __delay_cycles(1);	   \
-        __R30 &= 0xfffb;           \
-        __delay_cycles(1);
-
 
 // Write 0xF8 to slave to initialize block transfer
 inline void initBlockTransfer()
@@ -99,23 +87,18 @@ inline void initBlockTransfer()
 }
 
 // Read a single byte into rxbuf
-inline void rxByte()
+inline void rxWord()
 {
-    // manual loop unrolling
-    read_single_cycle(0)
-    read_single_cycle(1)
-    read_single_cycle(2)
-    read_single_cycle(3)
-    read_single_cycle(4)
-    read_single_cycle(5)
-    read_single_cycle(6)
-    read_single_cycle(7)
+  int i;
+  for(i=0;i<32;i++) {
+    __R30 = 0x0004;
+    RX_DATA_BUF = (RX_DATA_BUF << 1) | ((__R31 & 0x8) != 0);
+    __R30 = 0x0000;				
+  }
 }
 
 void main(){
     int iter;
-
-    volatile uint32_t gpo;
 
     /* GPI Mode 0, GPO Mode 0 */
     CT_CFG.GPCFG0 = 0;
@@ -133,11 +116,10 @@ void main(){
 	__delay_cycles(10);
 	
         for(iter=0;iter<BLOCKSIZE;iter++) { 
-            rxByte();
-	    __delay_cycles(5);
+            rxWord();
+        PRU0_PRU1_TRIGGER; // Trigger PRU1 interrupt
 	}
 
-        PRU0_PRU1_TRIGGER; // Trigger PRU1 interrupt
         //__delay_cycles(100000000);
     }
 

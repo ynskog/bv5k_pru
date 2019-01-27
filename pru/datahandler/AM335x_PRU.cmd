@@ -23,11 +23,10 @@ MEMORY
 	PRU_DMEM_1_0	: org = 0x00002000 len = 0x00002000	CREGISTER=25 /* 8kB PRU Data RAM 1_0 */
 
 	  PAGE 2:
-	PRU_SHAREDMEM	: org = 0x00010000 len = 0x00003000 CREGISTER=28 /* 12kB Shared RAM */
-
+	PRU_SHAREDMEM	: org = 0x00010000 len = 0x00002FF4 CREGISTER=28 /* 12kB Shared RAM */
+	GLB_BUF         : org = 0x00012FF4 len = 0x0000000C /* Shared buf in Shared RAM */
 	DDR			    : org = 0x80000000 len = 0x00000100	CREGISTER=31
 	L3OCMC			: org = 0x40000000 len = 0x00010000	CREGISTER=30
-
 
 	/* Peripherals */
 
@@ -83,4 +82,5 @@ SECTIONS {
 	.fardata	>  PRU_DMEM_0_1, PAGE 1
 
 	.resource_table > PRU_DMEM_0_1, PAGE 1
+	.RX_DATA_BUF > GLB_BUF, PAGE 2
 }

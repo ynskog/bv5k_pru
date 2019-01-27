@@ -4,7 +4,7 @@
 #include "resource_table.h"
 
 #pragma DATA_SECTION(RX_DATA_BUF, ".RX_DATA_BUF")
-far uint32_t RX_DATA_BUF[8];
+far uint32_t RX_DATA_BUF;
 
 volatile register uint32_t __R30;
 volatile register uint32_t __R31;
@@ -26,12 +26,13 @@ void main(void)
     CT_CFG.GPCFG0 = 0x0000;
 
     /* Clear GPO pins */
-    __R30 = 0x0000;
+    __R30 = 0xffff;
     
     /* Spin in loop until interrupt on HOST 1 is detected */
     while (1) {
         if (__R31 & HOST1_MASK) {
-	  TOGGLE_BLUE;
+	  __R30 = RX_DATA_BUF;
+      //TOGGLE_BLUE;
           /* Clear interrupt event (event 16)*/
 	  CT_INTC.SICR = 16;
 	  __delay_cycles(5); // IMPORTANT: Delay to avoid race condition when clearing interrupt
