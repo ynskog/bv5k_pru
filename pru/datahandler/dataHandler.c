@@ -31,11 +31,10 @@ void main(void)
     /* Spin in loop until interrupt on HOST 1 is detected */
     while (1) {
         if (__R31 & HOST1_MASK) {
-	  __R30 = RX_DATA_BUF;
-      //TOGGLE_BLUE;
+	       __R30 = RX_DATA_BUF;
           /* Clear interrupt event (event 16)*/
-	  CT_INTC.SICR = 16;
-	  __delay_cycles(5); // IMPORTANT: Delay to avoid race condition when clearing interrupt
+    	  CT_INTC.SICR = 16;
+	     __delay_cycles(5); // IMPORTANT: Delay to avoid race condition when clearing interrupt
         }
     }
 }

@@ -87,12 +87,13 @@ inline void initBlockTransfer()
 }
 
 // Read a single byte into rxbuf
+uint32_t rx_word;
 inline void rxWord()
 {
   int i;
   for(i=0;i<32;i++) {
     __R30 = 0x0004;
-    RX_DATA_BUF = (RX_DATA_BUF << 1) | ((__R31 & 0x8) != 0);
+    rx_word = (rx_word << 1) | ((__R31 & 0x8) != 0);
     __R30 = 0x0000;				
   }
 }
@@ -110,17 +111,16 @@ void main(){
     configIntc();
 
     while(1) {
-      while( (__R31 & 0x20)==0 ); // Wait for data ready
+        while( (__R31 & 0x20)==0 ); // Wait for data ready
 
         initBlockTransfer();
-	__delay_cycles(10);
+	   __delay_cycles(10);
 	
         for(iter=0;iter<BLOCKSIZE;iter++) { 
             rxWord();
-        PRU0_PRU1_TRIGGER; // Trigger PRU1 interrupt
-	}
-
-        //__delay_cycles(100000000);
+            RX_DATA_BUF = rx_word;
+            __delay_cycles(5);
+            PRU0_PRU1_TRIGGER; // Trigger PRU1 interrupt
+        }
     }
-
 }
