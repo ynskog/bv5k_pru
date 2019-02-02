@@ -42,6 +42,8 @@ volatile register uint32_t __R31;
 
 uint32_t idx; // Where to store the next word
 
+uint8_t payload[16];
+
 void main(void)
 {
 
@@ -65,9 +67,12 @@ void main(void)
   while (pru_rpmsg_channel(RPMSG_NS_CREATE, &transport, CHAN_NAME, CHAN_DESC, CHAN_PORT) != PRU_RPMSG_SUCCESS);
 
   /* Clear GPO pins */
-  __R30 = 0x0000;
+  __R30 = 0xffff;
 
   idx = 0;
+
+  /* host app will need to send a dummy message to the PRU before the PRU will know the destination address to use. */
+  //while (pru_rpmsg_receive(&transport, &src, &dst, payload, &len) == PRU_RPMSG_SUCCESS)
 
   while (1) {
     if (__R31 & HOST1_MASK) {
@@ -81,8 +86,11 @@ void main(void)
       // write data word to memory buffer
       rpmsg_buf[idx] = RX_DATA_BUF;
       idx += 1;
-      if(idx==rpmsg_buf_size) idx = 0;
-      __R30 = idx==0 ? 0xffff : 0x0000;
+      if(idx==rpmsg_buf_size) {
+        idx = 0;
+        //pru_rpmsg_send(&transport, dst, src, rpmsg_buf, 8);
+      }
+      __R30 = idx==0 ? 0x0000 : 0xffff;
     }
   }
 }
