@@ -3,12 +3,12 @@
 #include "pru_intc.h"
 #include "resource_table.h"
 
-#pragma DATA_SECTION(RX_DATA_BUF, ".RX_DATA_BUF")
-#pragma DATA_SECTION(rpmsg_buf, ".PRU_DMEM_1_0")
-far uint32_t RX_DATA_BUF;
-far uint32_t *rpmsg_buf;
 
+#pragma DATA_SECTION(RX_DATA_BUF, ".RX_DATA_BUF")
+#pragma DATA_SECTION(rpmsg_buf, ".RPMSG_BUF")
 #define rpmsg_buf_size 8192/sizeof(uint32_t) /* Using entire data ram for PRU1 */
+far uint32_t RX_DATA_BUF;
+far uint32_t rpmsg_buf[rpmsg_buf_size];
 
 volatile register uint32_t __R30;
 volatile register uint32_t __R31;

@@ -82,5 +82,6 @@ SECTIONS {
 	.fardata	>  PRU_DMEM_0_1, PAGE 1
 
 	.resource_table > PRU_DMEM_0_1, PAGE 1
+	.RPMSG_BUF > PRU_DMEM_1_0, PAGE 1
 	.RX_DATA_BUF > GLB_BUF, PAGE 2
 }
