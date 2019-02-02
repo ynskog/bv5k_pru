@@ -26,15 +26,16 @@ void main(void)
     CT_CFG.GPCFG0 = 0x0000;
 
     /* Clear GPO pins */
-    __R30 = 0xffff;
+    __R30 = 0x0000;
     
     /* Spin in loop until interrupt on HOST 1 is detected */
     while (1) {
         if (__R31 & HOST1_MASK) {
-	       __R30 = RX_DATA_BUF;
+	  __R30 = 0xffff;
           /* Clear interrupt event (event 16)*/
     	  CT_INTC.SICR = 16;
-	     __delay_cycles(5); // IMPORTANT: Delay to avoid race condition when clearing interrupt
+	  __delay_cycles(5); // IMPORTANT: Delay to avoid race condition when clearing interrupt
+	  __R30 = RX_DATA_BUF;
         }
     }
 }
