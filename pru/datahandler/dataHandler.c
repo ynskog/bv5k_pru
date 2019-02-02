@@ -4,7 +4,11 @@
 #include "resource_table.h"
 
 #pragma DATA_SECTION(RX_DATA_BUF, ".RX_DATA_BUF")
+#pragma DATA_SECTION(rpmsg_buf, ".PRU_DMEM_1_0")
 far uint32_t RX_DATA_BUF;
+far uint32_t *rpmsg_buf;
+
+#define rpmsg_buf_size 8192/sizeof(uint32_t) /* Using entire data ram for PRU1 */
 
 volatile register uint32_t __R30;
 volatile register uint32_t __R31;
@@ -20,23 +24,33 @@ volatile register uint32_t __R31;
 // LED is on PRU1 pin 10 (P1.35)
 #define TOGGLE_BLUE (__R30 ^= (1 << 14))
 
+uint32_t idx; // Where to store the next word
+
 void main(void)
 {
-    /* Configure GPI and GPO as Mode 0 (Direct Connect) */
-    CT_CFG.GPCFG0 = 0x0000;
+  /* Configure GPI and GPO as Mode 0 (Direct Connect) */
+  CT_CFG.GPCFG0 = 0x0000;
 
-    /* Clear GPO pins */
-    __R30 = 0x0000;
-    
-    /* Spin in loop until interrupt on HOST 1 is detected */
-    while (1) {
-        if (__R31 & HOST1_MASK) {
-	  __R30 = 0xffff;
-          /* Clear interrupt event (event 16)*/
-    	  CT_INTC.SICR = 16;
-	  __delay_cycles(5); // IMPORTANT: Delay to avoid race condition when clearing interrupt
-	  __R30 = RX_DATA_BUF;
-        }
+  /* Clear GPO pins */
+  __R30 = 0x0000;
+
+  idx = 0;
+
+  while (1) {
+    if (__R31 & HOST1_MASK) {
+
+      /* Clear interrupt event (event 16)*/
+      CT_INTC.SICR = 16;
+
+      // IMPORTANT: Delay to avoid race condition when clearing interrupt
+      __delay_cycles(5);
+
+      // write data word to memory buffer
+      rpmsg_buf[idx] = RX_DATA_BUF;
+      idx += 1;
+      if(idx==rpmsg_buf_size) idx = 0;
+      __R30 = idx==0 ? 0x0000 : 0xffff;
     }
+  }
 }
 
