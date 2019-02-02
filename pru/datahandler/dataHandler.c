@@ -51,14 +51,18 @@ void main(void)
   uint16_t src, dst, len;
   volatile uint8_t *status;
 
+  /* Configure GPI and GPO as Mode 0 (Direct Connect) */
+  CT_CFG.GPCFG0 = 0x0000;
+
   /* Allow OCP master port access by the PRU so the PRU can read external memories */
   CT_CFG.SYSCFG_bit.STANDBY_INIT = 0;
 
   /* Clear the status of the PRU-ICSS system event that the ARM will use to 'kick' us */
   CT_INTC.SICR_bit.STS_CLR_IDX = FROM_ARM_HOST;
 
-  /* Configure GPI and GPO as Mode 0 (Direct Connect) */
-  CT_CFG.GPCFG0 = 0x0000;
+  /* Make sure the Linux drivers are ready for RPMsg communication */
+  status = &resourceTable.rpmsg_vdev.status;
+  while (!(*status & VIRTIO_CONFIG_S_DRIVER_OK));
 
   /* Initialize the RPMsg transport structure */
   pru_rpmsg_init(&transport, &resourceTable.rpmsg_vring0, &resourceTable.rpmsg_vring1, TO_ARM_HOST, FROM_ARM_HOST);
@@ -72,7 +76,7 @@ void main(void)
   idx = 0;
 
   /* host app will need to send a dummy message to the PRU before the PRU will know the destination address to use. */
-  //while (pru_rpmsg_receive(&transport, &src, &dst, payload, &len) == PRU_RPMSG_SUCCESS)
+  while (pru_rpmsg_receive(&transport, &src, &dst, payload, &len) != PRU_RPMSG_SUCCESS)
 
   while (1) {
     if (__R31 & HOST1_MASK) {
@@ -88,9 +92,11 @@ void main(void)
       idx += 1;
       if(idx==rpmsg_buf_size) {
         idx = 0;
-        //pru_rpmsg_send(&transport, dst, src, rpmsg_buf, 8);
+        __R30 = 0x0000;
+        pru_rpmsg_send(&transport, dst, src, rpmsg_buf, 8);
+        __R30 = 0xffff;
       }
-      __R30 = idx==0 ? 0x0000 : 0xffff;
+      //__R30 = idx==0 ? 0x0000 : 0xffff;
     }
   }
 }
