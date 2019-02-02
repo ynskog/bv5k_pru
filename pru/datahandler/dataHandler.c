@@ -46,7 +46,7 @@ void main(void)
       __delay_cycles(5);
 
       // write data word to memory buffer
-      rpmsg_buf[idx] = RX_DATA_BUF;
+      //rpmsg_buf[idx] = RX_DATA_BUF;
       idx += 1;
       if(idx==rpmsg_buf_size) idx = 0;
       __R30 = idx==0 ? 0x0000 : 0xffff;
