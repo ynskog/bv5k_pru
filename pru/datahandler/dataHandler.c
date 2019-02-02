@@ -35,7 +35,7 @@ volatile register uint32_t __R31;
 #define CHAN_PORT     31
 
 #define RPMSG_HDR_SIZE 16
-#define RPMSG_PAYLOAD_SIZE 256 // number of bytes to send per transmission
+#define RPMSG_PAYLOAD_SIZE 512-16 // number of bytes to send per transmission
 
 /*
  * Used to make sure the Linux drivers are ready for RPMsg communication
@@ -51,16 +51,15 @@ struct pru_rpmsg_transport transport;
 uint16_t src, dst, len;
 volatile uint8_t *status;
 
-void send_buffer(uint8_t* buf) {
+void send_buffer(uint32_t* buf) {
   int base = 0;
-  for(base=0;base<data_buf_size;base+=RPMSG_PAYLOAD_SIZE) {
+  for(base=0;base<data_buf_size*4;base+=RPMSG_PAYLOAD_SIZE) {
+    __delay_cycles(100000);
     __R30 = 0xffff;
     while(pru_rpmsg_send(&transport, dst, src, rpmsg_buf+base, RPMSG_PAYLOAD_SIZE) != PRU_RPMSG_SUCCESS);
     __R30 = 0x0000;
   }
-
 }
-
 
 void main(void)
 {
