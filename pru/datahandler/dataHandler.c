@@ -8,9 +8,9 @@
 
 #pragma DATA_SECTION(RX_DATA_BUF, ".RX_DATA_BUF")
 #pragma DATA_SECTION(rpmsg_buf, ".RPMSG_BUF")
-#define rpmsg_buf_size 8192/sizeof(uint32_t) /* Using entire data ram for PRU1 */
+#define data_buf_size 8192/sizeof(uint32_t) /* Using entire data ram for PRU1 */
 far uint32_t RX_DATA_BUF;
-far uint32_t rpmsg_buf[rpmsg_buf_size];
+far uint32_t rpmsg_buf[data_buf_size];
 
 volatile register uint32_t __R30;
 volatile register uint32_t __R31;
@@ -34,6 +34,9 @@ volatile register uint32_t __R31;
 #define CHAN_DESC     "Channel 31"
 #define CHAN_PORT     31
 
+#define RPMSG_HDR_SIZE 16
+#define RPMSG_PAYLOAD_SIZE 256 // number of bytes to send per transmission
+
 /*
  * Used to make sure the Linux drivers are ready for RPMsg communication
  * Found at linux-x.y.z/include/uapi/linux/virtio_config.h
@@ -44,12 +47,23 @@ uint32_t idx; // Where to store the next word
 
 uint8_t payload[16];
 
+struct pru_rpmsg_transport transport;
+uint16_t src, dst, len;
+volatile uint8_t *status;
+
+void send_buffer(uint8_t* buf) {
+  int base = 0;
+  for(base=0;base<data_buf_size;base+=RPMSG_PAYLOAD_SIZE) {
+    __R30 = 0xffff;
+    while(pru_rpmsg_send(&transport, dst, src, rpmsg_buf+base, RPMSG_PAYLOAD_SIZE) != PRU_RPMSG_SUCCESS);
+    __R30 = 0x0000;
+  }
+
+}
+
+
 void main(void)
 {
-
-  struct pru_rpmsg_transport transport;
-  uint16_t src, dst, len;
-  volatile uint8_t *status;
 
   /* Configure GPI and GPO as Mode 0 (Direct Connect) */
   CT_CFG.GPCFG0 = 0x0000;
@@ -70,13 +84,13 @@ void main(void)
   /* Create the RPMsg channel between the PRU and ARM user space using the transport structure. */
   while (pru_rpmsg_channel(RPMSG_NS_CREATE, &transport, CHAN_NAME, CHAN_DESC, CHAN_PORT) != PRU_RPMSG_SUCCESS);
 
+  // ARM must send a single message to initialize the channel before we start the main loop
+  while (pru_rpmsg_receive(&transport, &src, &dst, payload, &len) != PRU_RPMSG_SUCCESS);
+
   /* Clear GPO pins */
   __R30 = 0xffff;
 
   idx = 0;
-
-  /* host app will need to send a dummy message to the PRU before the PRU will know the destination address to use. */
-  while (pru_rpmsg_receive(&transport, &src, &dst, payload, &len) != PRU_RPMSG_SUCCESS)
 
   while (1) {
     if (__R31 & HOST1_MASK) {
@@ -90,11 +104,9 @@ void main(void)
       // write data word to memory buffer
       rpmsg_buf[idx] = RX_DATA_BUF;
       idx += 1;
-      if(idx==rpmsg_buf_size) {
+      if(idx==data_buf_size) {
         idx = 0;
-        __R30 = 0x0000;
-        pru_rpmsg_send(&transport, dst, src, rpmsg_buf, 8);
-        __R30 = 0xffff;
+        send_buffer(rpmsg_buf);
       }
       //__R30 = idx==0 ? 0x0000 : 0xffff;
     }
