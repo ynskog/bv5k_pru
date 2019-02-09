@@ -83,14 +83,14 @@ void main(void)
   /* Create the RPMsg channel between the PRU and ARM user space using the transport structure. */
   while (pru_rpmsg_channel(RPMSG_NS_CREATE, &transport, CHAN_NAME, CHAN_DESC, CHAN_PORT) != PRU_RPMSG_SUCCESS);
 
+  __R30 = 0x0000;
+
   // ARM must send a single message to initialize the channel before we start the main loop
   while (pru_rpmsg_receive(&transport, &src, &dst, payload, &len) != PRU_RPMSG_SUCCESS);
 
-  /* Clear GPO pins */
   __R30 = 0xffff;
 
   idx = 0;
-
   while (1) {
     if (__R31 & HOST1_MASK) {
 
@@ -105,6 +105,7 @@ void main(void)
       idx += 1;
       if(idx==data_buf_size) {
         idx = 0;
+        rpmsg_buf[0] = 0xDEADBEEF;
         send_buffer(rpmsg_buf);
       }
       //__R30 = idx==0 ? 0x0000 : 0xffff;
