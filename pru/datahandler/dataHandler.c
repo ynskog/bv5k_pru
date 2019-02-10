@@ -35,7 +35,7 @@ volatile register uint32_t __R31;
 #define CHAN_PORT     31
 
 #define RPMSG_HDR_SIZE 16
-#define RPMSG_PAYLOAD_SIZE 512-16 // number of bytes to send per transmission
+#define RPMSG_PAYLOAD_SIZE 512-RPMSG_HDR_SIZE // number of bytes to send per transmission
 
 /*
  * Used to make sure the Linux drivers are ready for RPMsg communication
@@ -43,7 +43,7 @@ volatile register uint32_t __R31;
  */
 #define VIRTIO_CONFIG_S_DRIVER_OK 4
 
-uint32_t idx; // Where to store the next word
+
 
 uint8_t payload[16];
 
@@ -56,7 +56,8 @@ void send_buffer(uint32_t* buf) {
   for(base=0;base<data_buf_size*4;base+=RPMSG_PAYLOAD_SIZE) {
     __delay_cycles(100000);
     __R30 = 0xffff;
-    while(pru_rpmsg_send(&transport, dst, src, rpmsg_buf+base, RPMSG_PAYLOAD_SIZE) != PRU_RPMSG_SUCCESS);
+    *(rpmsg_buf+base) = base;
+    while(pru_rpmsg_send(&transport, dst, src, (uint32_t*) (rpmsg_buf+base/4), RPMSG_PAYLOAD_SIZE) != PRU_RPMSG_SUCCESS);
     __R30 = 0x0000;
   }
 }
@@ -64,6 +65,7 @@ void send_buffer(uint32_t* buf) {
 void main(void)
 {
   int heartbeat_cnt;
+  uint32_t idx; // Where to store the next word
 
   /* Configure GPI and GPO as Mode 0 (Direct Connect) */
   CT_CFG.GPCFG0 = 0x0000;
@@ -100,15 +102,16 @@ void main(void)
       CT_INTC.SICR = 16;
 
       // IMPORTANT: Delay to avoid race condition when clearing interrupt
-      __delay_cycles(5);
+      __delay_cycles(10);
 
       // write data word to memory buffer
       rpmsg_buf[idx] = RX_DATA_BUF;
+
       idx += 1;
       if(idx==data_buf_size) {
         idx = 0;
 
-        rpmsg_buf[0] = 0xDEADBEEF;
+//        rpmsg_buf[0] = 0xEFBEADDE;
 
         /* stop sending after a while if we dont get a heartbeat from the host. If the host
            is not ready to receive we will kill the pru driver with the we generate */

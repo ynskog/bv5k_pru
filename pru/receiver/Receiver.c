@@ -86,7 +86,7 @@ inline void initBlockTransfer()
 
 }
 
-// Read a single byte into rxbuf
+// Read a single word into rxbuf
 uint32_t rx_word;
 inline void rxWord()
 {
@@ -94,7 +94,7 @@ inline void rxWord()
   for(i=0;i<32;i++) {
     __R30 = 0x0004;
     rx_word = (rx_word << 1) | ((__R31 & 0x8) != 0);
-    __R30 = 0x0000;				
+    __R30 = 0x0000;
   }
 }
 
@@ -115,8 +115,8 @@ void main(){
 
         initBlockTransfer();
 	   __delay_cycles(10);
-	
-        for(iter=0;iter<BLOCKSIZE;iter++) { 
+
+        for(iter=0;iter<BLOCKSIZE;iter++) {
             rxWord();
             RX_DATA_BUF = rx_word;
             __delay_cycles(5);

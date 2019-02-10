@@ -20,6 +20,9 @@ void intHandler(int dummy) {
     keepRunning = 0;
 }
 
+#define RPMSG_HDR_SIZE 16
+#define RPMSG_PAYLOAD_SIZE 512-RPMSG_HDR_SIZE // number of bytes to send per transmission
+
 #define HEARTBEAT_PERIOD 50
 #define DEST_HOSTNAME "192.168.7.1"
 #define DEST_PORT "1337"
@@ -93,7 +96,7 @@ int main(void)
   result = read(pollfds.fd, readBuf, MAX_BUFFER_SIZE);
   if (result > 0)
     packet_cnt++;
-    if (sendto(fd,readBuf,MAX_BUFFER_SIZE,0,
+    if (sendto(fd,readBuf,RPMSG_PAYLOAD_SIZE,0,
         res->ai_addr,res->ai_addrlen)==-1) {
         printf("Failed to send\n");
     }
