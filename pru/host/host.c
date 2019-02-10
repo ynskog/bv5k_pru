@@ -12,6 +12,8 @@ void intHandler(int dummy) {
     keepRunning = 0;
 }
 
+#define HEARTBEAT_PERIOD 50
+
 #define MAX_BUFFER_SIZE 512
 char readBuf[MAX_BUFFER_SIZE];
 #define DEVICE_NAME1 "/dev/rpmsg_pru31"
@@ -21,6 +23,7 @@ int main(void)
  int result = 0;
 
  int pru_data;
+ int heartbeat_cnt = HEARTBEAT_PERIOD;
 
   signal(SIGINT, intHandler); // stop on ctrl-c
 
@@ -39,16 +42,23 @@ int main(void)
   printf("Successfully opened %s\n",DEVICE_NAME1);
  }
 
- /* Send something to create the communication channel, doesnt matter what we send. PRU will block until receiving this message */
- result = write(pollfds.fd, "Start", 13);
+result = write(pollfds.fd, "start", 13);
 
- /* Poll until we receive a message from the PRU and then print it */
  while(keepRunning) {
+
+  if(--heartbeat_cnt == 0) {
+    /* let the PRU know that we are ready to receive data. without this, it will stop sending data after a while */
+    result = write(pollfds.fd, "alive", 13);
+    heartbeat_cnt = HEARTBEAT_PERIOD;
+  }
+
   result = read(pollfds.fd, readBuf, MAX_BUFFER_SIZE);
   if (result > 0)
+
   for(int idx=0;idx<4;idx++)
     printf("%x",readBuf[idx]);
 }
+ printf("\nClosing %s\n",DEVICE_NAME1);
  close(pollfds.fd);
  return 0;
 }

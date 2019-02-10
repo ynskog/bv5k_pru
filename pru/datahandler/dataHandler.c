@@ -63,6 +63,7 @@ void send_buffer(uint32_t* buf) {
 
 void main(void)
 {
+  int heartbeat_cnt;
 
   /* Configure GPI and GPO as Mode 0 (Direct Connect) */
   CT_CFG.GPCFG0 = 0x0000;
@@ -86,11 +87,12 @@ void main(void)
   __R30 = 0x0000;
 
   // ARM must send a single message to initialize the channel before we start the main loop
-  while (pru_rpmsg_receive(&transport, &src, &dst, payload, &len) != PRU_RPMSG_SUCCESS);
+  //while (pru_rpmsg_receive(&transport, &src, &dst, payload, &len) != PRU_RPMSG_SUCCESS);
 
   __R30 = 0xffff;
 
   idx = 0;
+  heartbeat_cnt = 10;
   while (1) {
     if (__R31 & HOST1_MASK) {
 
@@ -105,8 +107,16 @@ void main(void)
       idx += 1;
       if(idx==data_buf_size) {
         idx = 0;
+
         rpmsg_buf[0] = 0xDEADBEEF;
-        send_buffer(rpmsg_buf);
+
+        /* stop sending after a while if we dont get a heartbeat from the host. If the host
+           is not ready to receive we will kill the pru driver with the we generate */
+        if(pru_rpmsg_receive(&transport, &src, &dst, payload, &len) == PRU_RPMSG_SUCCESS) {
+          heartbeat_cnt = 10;
+        }
+
+        if(heartbeat_cnt-- > 0) send_buffer(rpmsg_buf);
       }
       //__R30 = idx==0 ? 0x0000 : 0xffff;
     }
