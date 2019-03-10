@@ -1,0 +1,13 @@
+[Unit]
+Description=bv5k pru
+
+[Service]
+User=root
+Type=oneshot
+RemainAfterExit=true
+ExecStartPre=/bin/sleep 60
+ExecStart=/opt/bv5k/pru/start.sh
+ExecStop=/opt/bv5k/pru/start.sh
+
+[Install]
+WantedBy=multi-user.target

@@ -101,8 +101,9 @@ int main(void)
         printf("Failed to send\n");
     }
 
-    printf("\r%d",packet_cnt);
-}
+    //    printf("\r%d",packet_cnt);
+
+ }
  printf("\nClosing %s\n",DEVICE_NAME1);
  close(pollfds.fd);
  return 0;
