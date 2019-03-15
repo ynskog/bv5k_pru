@@ -86,6 +86,37 @@ inline void initBlockTransfer()
 
 }
 
+// Write 0xFB to slave to flush the slave buffers
+inline void flushSlaveBuffer()
+{
+    __R30 |= 0x0040;  __delay_cycles(BIT_DELAY);
+
+    __R30 |= 0x0044; __delay_cycles(BIT_DELAY);
+    __R30 &= 0xfffb;  __delay_cycles(BIT_DELAY);
+
+    __R30 |= 0x0044; __delay_cycles(BIT_DELAY);
+    __R30 &= 0xfffb;  __delay_cycles(BIT_DELAY);
+
+    __R30 |= 0x0044; __delay_cycles(BIT_DELAY);
+    __R30 &= 0xfffb;  __delay_cycles(BIT_DELAY);
+
+    __R30 |= 0x0044; __delay_cycles(BIT_DELAY);
+    __R30 &= 0xfffb;  __delay_cycles(BIT_DELAY);
+
+    __R30 |= 0x0044; __delay_cycles(BIT_DELAY);
+    __R30 &= 0xffbb;  __delay_cycles(BIT_DELAY);
+
+    __R30 |= 0x0004; __delay_cycles(BIT_DELAY);
+    __R30 &= 0xffbb;  __delay_cycles(BIT_DELAY);
+
+    __R30 |= 0x0044; __delay_cycles(BIT_DELAY);
+    __R30 &= 0xfffb;  __delay_cycles(BIT_DELAY);
+
+    __R30 |= 0x0044; __delay_cycles(BIT_DELAY);
+    __R30 &= 0xfffb;  __delay_cycles(BIT_DELAY);
+
+}
+
 // Read a single word into rxbuf
 uint32_t rx_word;
 inline void rxWord()
@@ -95,6 +126,22 @@ inline void rxWord()
     __R30 = 0x0004;
     rx_word = (rx_word << 1) | ((__R31 & 0x8) != 0);
     __R30 = 0x0000;
+  }
+}
+
+// Read final word into rxbuf
+inline void rxWordFinal()
+{
+  int i;
+  for(i=0;i<24;i++) {
+    __R30 = 0x0004;
+    rx_word = (rx_word << 1) | ((__R31 & 0x8) != 0);
+    __R30 = 0x0000;
+  }
+  for(i=0;i<8;i++) {
+    __R30 = 0x0044;
+    rx_word = (rx_word << 1) | ((__R31 & 0x8) != 0);
+    __R30 = 0x0040;
   }
 }
 
@@ -110,17 +157,25 @@ void main(){
     /* Configure interrupt controller */
     configIntc();
 
+    flushSlaveBuffer();
+    __delay_cycles(100);
+    __R30 = 0x0000;
+
     while(1) {
         while( (__R31 & 0x20)==0 ); // Wait for data ready
 
         initBlockTransfer();
 	   __delay_cycles(10);
 
-        for(iter=0;iter<BLOCKSIZE;iter++) {
+        for(iter=0;iter<BLOCKSIZE-1;iter++) {
             rxWord();
             RX_DATA_BUF = rx_word;
             __delay_cycles(5);
             PRU0_PRU1_TRIGGER; // Trigger PRU1 interrupt
         }
+        rxWordFinal();
+        RX_DATA_BUF = rx_word;
+        __delay_cycles(5);
+        PRU0_PRU1_TRIGGER; // Trigger PRU1 interrupt
     }
 }
