@@ -11,10 +11,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-
-
-
 static volatile int keepRunning = 1;
+static int has_notified = 0;
 
 void intHandler(int dummy) {
     keepRunning = 0;
@@ -42,22 +40,26 @@ int main(void)
  struct addrinfo hints;
  struct addrinfo* res=0;
 
+ if(getuid() != 0) {
+  printf("Please run this as root\n");
+  return -1;
+ }
+
  signal(SIGINT, intHandler); // stop on ctrl-c
 
- /* Open the rpmsg_pru character device file */
- pollfds.fd = open(DEVICE_NAME1, O_RDWR);
- /*
- * If the RPMsg channel doesn't exist yet the character device
- * won't either.
- * Make sure the PRU firmware is loaded and that the rpmsg_pru
- * module is inserted.
- */
- if (pollfds.fd < 0) {
- printf("Failed to open %s\n",DEVICE_NAME1);
- return -1;
- } else {
+  while(keepRunning) {
+    /* Open the rpmsg_pru character device file */
+    pollfds.fd = open(DEVICE_NAME1, O_RDWR);
+    if(pollfds.fd < 0) {
+      printf("Failed to open %s, retry in 30 seconds..\n",DEVICE_NAME1);
+      usleep(30*1000*1000);
+    } else {
+      break;
+    }
+  }
+  if(!keepRunning) return 0;
+
   printf("Successfully opened %s\n",DEVICE_NAME1);
- }
 
   /* init UDP */
   memset(&hints,0,sizeof(hints));
@@ -84,24 +86,28 @@ int main(void)
 
   /* Instruct PRU to start sending data */
   result = write(pollfds.fd, "start", 13);
+  printf("Initializing hardware..\n");
 
  while(keepRunning) {
 
   if(--heartbeat_cnt == 0) {
-    /* let the PRU know that we are ready to receive data. without this, it will stop sending data after a while */
+    /* let the PRU know that we are ready to receive data. Without this, it will stop sending data after a while */
     result = write(pollfds.fd, "alive", 13);
     heartbeat_cnt = HEARTBEAT_PERIOD;
   }
 
   result = read(pollfds.fd, readBuf, MAX_BUFFER_SIZE);
+  if(!has_notified) {
+    printf("Read first data buffer, further messages will be suppressed\n");
+    has_notified = 1;
+  }
+
   if (result > 0)
     packet_cnt++;
     if (sendto(fd,readBuf,RPMSG_PAYLOAD_SIZE,0,
         res->ai_addr,res->ai_addrlen)==-1) {
         printf("Failed to send\n");
     }
-
-    //    printf("\r%d",packet_cnt);
 
  }
  printf("\nClosing %s\n",DEVICE_NAME1);
